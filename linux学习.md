@@ -236,3 +236,11 @@ n      for exactly n.
 ##### dos2unix
 
 linux文件出现^M Windows的回车，可以通过dos2unix filename 转化为linux的回车
+
+---
+
+##### **chown**
+
+Usage: chown [OPTION]... [OWNER][:[GROUP]] FILE...
+
+仅root用户有权限进行授权，可以将文件授权给其他用户所有，其他用户可以拥有所有权
