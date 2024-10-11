@@ -1,18 +1,33 @@
-
-
 ## python学习
 
+### 基础
 
+#### 输入输出
 
-**运算符**
+##### input 
 
-a**b 表示a的b次方
+```python
+num = input()
+```
 
-**生命范围**
+##### **print特殊技巧**
+
+```python
+print("xxx\tsss")//  \t代替空格可在多行对其
+print("xx" ,end='') //   ,end='' 强制不换行
+```
+
+#### **运算符**
+
++,-,*,/,//,%
+
+特殊：a**b 表示a的b次方
+
+#### **生命范围**
 
 python通过缩进来判断归属，同一缩进为同级
 
-**条件判定**
+#### **条件判定**
 
 ```python
 if 条件：  
@@ -24,13 +39,6 @@ elif 条件：
 else :
 	//todo5:
 //todo，只要比条件多一个缩进及在 该条件下
-```
-
-print特殊技巧
-
-```python
-print("xxx\tsss")//  \t代替空格可在多行对其
-print("xx" ,end='') //   ,end='' 强制不换行 
 ```
 
 #### 循环
@@ -49,7 +57,10 @@ range(num1,num2) //[num1 -num2)
 range(num1,num2,step) //[num1 -num2) 0,2,4,6               
 ```
 
+- while：更加自由，更适合实现复杂循环逻辑
+- for：适合遍历读写
 
+#### 函数
 
 ```python
 #python 函数格式
@@ -73,19 +84,44 @@ def fun_name(args):
 
 
 
-函数内使用全局变量需要加上**global** 【variable】关键字
+注意：函数内使用全局变量需要加上**global** 【variable】关键字
 
 
 
-### 结构
+### 数据结构
 
-##### list--[]，
+#### list
 
-下标可以使用**负数**，来表示从后往前数
+类似于vector,但是更加自由，可以同时容纳不同类型的元素
 
-append();insert();pop()....
+```python
+var = ["a","b"]
+var1 = [1,2]
+var2 =[var,var1]
+```
 
-##### tuple---(),一旦初始化就不能改变
+
+
+注意：
+
+- 下标可以使用**负数**，来表示从后往前数
+
+方法：
+
+- insert(pos,var)
+- append(var)
+- extend(other container) //将other容器中的元素**展开**，依次append到该容器末尾，注意类型变化
+- pop(pos) 
+- remove(var) //**find** var **from front position to back**   and  remove
+- clear()  //empty
+- count(var) 
+- index(var) //找元素的索引
+
+
+
+#### tuple
+
+元组容器，元素不能被修改、**只读**、一旦初始化就不能改变
 
 特例:括号`()`既可以表示tuple，又可以表示数学公式中的小括号，这就产生了歧义，因此，Python规定，这种情况下，按小括号进行计算，计算结果自然是`1`。所以，只有1个元素的tuple定义时必须加一个**逗号`,`**，来消除歧义
 

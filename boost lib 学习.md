@@ -1,0 +1,245 @@
+# Boost 库
+
+##### io_context
+
+> io_service是老版本的，为了更好地反映其作为异步操作执行上下文的角色，这个类被重命名为 `io_context`。功能一致
+
+**同步IO主要执行流程**
+
+io_context对象是asio框架中的**调度器**，所有异步io事件都是通过它来分发处理的（io对象的构造函数中都需要传入一个io_service对象）。在同步事件中会使用一个默认的
+
+1. 您的程序通过调用I / O对象(这里是socket)来启动连接操作
+
+   ```cpp
+   socket.connect(server_endpoint);
+   ```
+
+2. I / O对象将请求转发到io_context。
+
+3. io_context**调用操作系统**来执行连接操作。
+
+4. 操作系统将操作的结果返回给io_context。
+
+5. io_context将由操作导致的任何错误转换为boost :: system :: error_code类型的对象,传给IO对象
+
+6. 如果操作失败，则I / O对象将引发类型boost :: system :: system_error的异常。
+
+```cpp
+boost::system::error_code ec;
+socket.connect(server_endpoint, ec);
+```
+
+**异步IO主要执行流程**
+
+1. 您的程序通过调用I / O对象来启动连接操作
+
+   ```cpp
+   socket.async_connect(server_endpoint, your_completion_handler);
+   ```
+
+   其中 your_completion_handler为一个回调函数
+
+2. I / O对象将请求转发到io_context。
+
+3. io_context向操作系统发出应该启动异步连接的信号
+
+   ![在这里插入图片描述](E:\MarkDown\picture\watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxMTcyNjMx,size_16,color_FFFFFF,t_70.png)
+
+4. 操作系统通过将结果放在一个队列上来指示连接操作已经完成，等待io上下文拾取。
+   您的程序必须调用io context::run()(或一个类似的io context成员函数)，以便检索结果。当有未完成的异步操作时，对io context::run()的调用会**阻塞**，所以通常会在开始第一个异步操作时调用它。
+
+5. 在对io上下文::run()的调用中，io上下文将操作的**结果取出队列**，将其转换为错误代码，然后将其传递给完成处理程序（回调函数）
+
+
+
+##### socket
+
+```cpp
+asio::io_context  ios;
+asio::ip::tcp protocol = asio::ip::tcp::v4();
+
+asio::ip::tcp::socket sock(ios);
+
+boost::system::error_code ec;
+
+sock.open(protocol, ec);
+if (ec.value() != 0) {
+	// Failed to open the socket.
+	std::cout
+		<< "Failed to open the socket! Error code = "
+		<< ec.value() << ". Message: " << ec.message();
+	return ec.value();
+}
+```
+
+注意：在新版boost库中，asio::ip:tcp::socket无需手动open，在创建后会自动打开。
+
+
+
+##### acceptor
+
+```cpp
+	unsigned short port_num = 3333;
+
+	asio::ip::tcp::endpoint ep(asio::ip::address_v4::any(),port_num);
+//create and open
+	asio::io_context ios;
+
+	asio::ip::tcp protocol = asio::ip::tcp::v6();
+
+	asio::ip::tcp::acceptor acceptor(ios);
+
+	boost::system::error_code ec;
+
+	acceptor.open(protocol, ec);
+
+	if (ec.value() != 0) {
+		// Failed to open the socket.
+		std::cout
+			<< "Failed to open the acceptor socket!"
+			<< "Error code = "
+			<< ec.value() << ". Message: " << ec.message();
+		return ec.value();
+	}
+//bind
+	acceptor.bind(ep, ec);
+	// Handling errors if any.
+	if (ec.value() != 0) {
+		// Failed to bind the acceptor socket. Breaking
+		// execution.
+		std::cout << "Failed to bind the acceptor socket."
+			<< "Error code = " << ec.value() << ". Message: "
+			<< ec.message();
+
+		return ec.value();
+	}
+```
+
+注意：上面的方式是分离完成绑定的，下面的方式可以简单完成acceotor的创建、打开和绑定,接受3333端口的请求
+
+```cpp
+try{
+	asio::ip::acceptor a(ios,asio::ip::tcp::endlport(aiso::ip::tcp::v4(),3333));  
+}
+catch(system::system_error& e){
+    //...
+}
+```
+
+通过try-catch 对error进行捕获,保证安全
+
+
+
+##### endpoint
+
+终端节点，简单来说就是，客户端用来**连接Connect**服务器，服务端用来**绑定Bind**监听
+
+`endpoint`需要`asio::ip::address`，作为服务端可以使用`asio::ip::address_v4().any()`来接受所有的ip地址
+
+##### error
+
+`system_error`包含了一个 `error_code` 对象，可以使用这个对象来获取错误码的值和类别。 ，在error_code作为参数传入的时候，其实也是捕获到system_error，然后对error_code进行赋值，然后再返回。
+
+
+
+##### asio::buffer
+
+设计理念：
+
+ boost::asio提供了`asio::mutable_buffer` 和 `asio::sconst_buffer`这两个结构，他们是一段连续的空间，首字节存储了后续数据的长度。 `asio::mutable_buffer`用于写服务，`asio::const_buffer`用于读服务。
+
+![https://cdn.llfc.club/1676257797218.jpg](E:\MarkDown\picture\1676257797218-17286142150422.jpg)
+
+就使用而言，根据输入参数，返回读buffer --`asio::const_buffers_1`，和写buffer--`mutable_buffers_1`
+
+```cpp
+asio::const_buffers_1 cb1=asio::buffer("hello world!");
+
+string str("hello world!");
+std::vector<char> v1(str.begin(),str.end());
+asio::mutable_buffers_1 mb1=asio::buffer(v1);
+
+const size_t  BUF_SIZE_BYTES = 20;
+std::unique_ptr<char[] > buf(new char[BUF_SIZE_BYTES]);
+auto input_buf = asio::buffer(static_cast<void*>(buf.get()), BUF_SIZE_BYTES);
+```
+
+### 同步读写
+
+##### 写
+
+`write_some`
+
+返回发送的长度，循环发送，更多运用于异步发送。由于buffer是用户区的缓冲区，而TCP的缓冲区是在内核里的，这就会导致的想要发送的长度，受限于TCP缓冲区，当TCP缓冲区存留了一定的数据小于用户缓冲区，就会导致write只能发送一部分数据
+
+```cpp
+std::string buf = "Hello World!";
+	std::size_t  total_bytes_written = 0;
+	//循环发送
+	//write_some返回每次写入的字节数
+	//total_bytes_written是已经发送的字节数。
+	//每次发送buf.length()- total_bytes_written)字节数据
+	
+	while (total_bytes_written != buf.length()) {
+		total_bytes_written += sock.write_some(
+			asio::buffer(buf.c_str()+total_bytes_written, 
+				buf.length()- total_bytes_written));
+	}
+```
+
+**`send` `write`**
+
+> 相对于write_some他们不需要知道缓冲区发了几次才将数据发送出去，只关注完整数据是否发送成功.
+>
+> 而write比send更加灵活，send只能用于socket的内容发送，write可以接受别的IO对象的fd
+
+```cpp
+sock.send(aiso::buffer("hello world!"));
+asio::write(sock,asio::buffer("hello world!"));
+```
+
+##### 读
+
+`read_some`
+
+> 循环读取，类似于write_some，但对于写，循环读取更加常用
+
+```cpp
+//assume that size of message is 10 byte;
+const size_t MESSAGE_SIZE=10;
+char buf[MESSAGE_SIZE];
+size_t read_size=0;
+vector<char> v1;
+while(read_size != MESSAGE_SIZE){
+   read_size +=sock.read_some(asio::buffer(buf+read_size,MESSAGE_SIZE-read_size));
+}
+cout << buf<<endl;
+```
+
+`receive`、`read`
+
+> 逻辑和`send` `write`完全一致
+
+`read_until` 
+
+> 顾名思义 读到一个设定符号就停止
+
+
+
+### 异步读写
+
+#### 异步读
+
+1. **`async_read`**：
+   - `async_read` 函数用于从套接字异步读取固定大小的数据到一个或多个缓冲区。
+   - 它要求提供的缓冲区序列的总大小至少与要读取的数据大小相匹配。
+   - 如果读取的数据量小于请求的数据量，它将抛出一个 `boost::asio::error::eof` 异常，除非遇到其他错误。
+2. **`async_read_some`**：
+   - `async_read_some` 函数用于从套接字异步读取任意数量的数据到一个或多个缓冲区。
+   - 它不会抛出 `boost::asio::error::eof` 异常，即使读取的数据量小于请求的数据量。
+   - 这个函数适合于不确定要读取多少数据，或者只想读取套接字当前可用的数据。
+3. **`async_receive`**：
+   - `async_receive` 函数专门用于 **TCP 套接字**，它将异步读取数据到一个或多个缓冲区，直到遇到 EOF（文件结束标志）或遇到错误。
+   - 它的行为类似于 `async_read`，但是它在读取到 EOF 时会返回，而 `async_read` 需要你手动处理 EOF 的情况。
+
+注意：eof == end of file

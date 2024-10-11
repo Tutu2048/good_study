@@ -286,7 +286,9 @@ Servants管理里可以更改tars配置，上文所说的配置是服务配置
 
 //TODO  查看框架代码异步调用async、回调是如何实现的
 
-A调用B，B调用C  current参数set_response =false 来实现B的全异步。b不回包给a，等待c回包后再回包a
+**A调用B，B调用C  current参数set_response =false 来实现B的全异步。**
+
+**设置之后b不回包给a，线程继续往下走，c回包后触发c的callback再使用sendrespondse再回包a**
 
 
 
@@ -343,7 +345,7 @@ HelloPrx pPrx = _comm->stringToProxy<HelloPrx>(helloObj);
 
 https://cloud.tencent.com/developer/article/1663146
 
-
+![img](E:\MarkDown\tars框架\picture\j31bwsrn1o.png)
 
 
 
@@ -376,3 +378,49 @@ https://doc.tarsyun.com/#/dev/tarscpp/tars-server-thread.md
 | 通信器 | 异步回调线程，负责执行异步回调函数，客户端每个网络线程有自己的异步线程 | 可配置   |
 
 能改变的就是服务端网络线程、业务逻辑处理线程、客户端网络线程、异步回调处理线程。
+
+---
+
+##### **自定义协议**
+
+https://doc.tarsyun.com/#/dev/tarscpp/tars-thirdparty-protocol.md
+
+TarsCpp2.0 的协议器的原型如下:
+
+```cpp
+TC_NetWorkBuffer::PACKET_TYPE parseHttp(TC_NetWorkBuffer &in, vector<char> &out)
+```
+
+说明:
+
+- in: TC_NetWorkBuffer 管理着所有输入 buffer, 内部采用链表管理
+
+- out: 解析一个完成的数据包(测试表明, 在内存处理方面, vector比 string 稍微快一点)
+
+- 返回值: TC_NetWorkBuffer::PACKET_TYPE, 表示解析状态:
+
+  > - TC_NetWorkBuffer::PACKET_FULL: 解析出一个完整的包, 你实现具体解析器函数时需要将完整的包放入 out 参数中, out 会在 Servant 的 doRequest 中拿到
+  > - TC_NetWorkBuffer::PACKET_LESS: 包没有收全, 需要继续接收
+  > - TC_NetWorkBuffer::PACKET_ERR: 包解析出错, 框架会关闭当前连接
+
+为了避免内存 copy, TC_NetWorkBuffer 中设计几个函数, 这几个函数是你可能需要用到的:
+
+- getBufferLength: 获取当前 buffer 中接收当时还没有解析的数据的长度
+- getBufferPointer: 获取链表上, 第一个有效的 buffer 的数(指针和长度)
+- getBuffers: 获取所有 buffer(会有内存 copy, 使用时请注意)
+- getHeader: 获取前几个字节的二进制流(注意指针不移动, 即不改变数据内容)
+- moveHeader: 指针后移, 通常配合 getHeader 使用
+- getValueOf[1-4]: 获取头部几个字节, 并用字节序转换成具体类型
+- parseHttp: http 协议解析
+
+---
+
+##### 为什么客户端需要负载均衡？
+
+> 答:为了让客户端获取到更好的服务
+
+- 故障转移，避免单个服务器的崩溃导致客户端无法获取服务
+- 和分布式服务器配合，从不同服务器获取不同的服务，来提升性能
+- 减少服务器压力，和获取更加相近的服务器，减少网络延迟
+- ...
+
