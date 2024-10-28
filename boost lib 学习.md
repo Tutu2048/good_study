@@ -1,5 +1,7 @@
 # Boost 库
 
+### 常用类
+
 ##### io_context
 
 > io_service是老版本的，为了更好地反映其作为异步操作执行上下文的角色，这个类被重命名为 `io_context`。功能一致
@@ -78,6 +80,8 @@ if (ec.value() != 0) {
 
 ##### acceptor
 
+boost的acceptor融合了很多tcp连接的步骤、分别有bind、listen、accept三个步骤，其中listen和accept，其中的fd转换、缓冲区转换都被封装在了accept中，使用起来更加方便
+
 ```cpp
 	unsigned short port_num = 3333;
 
@@ -128,6 +132,14 @@ catch(system::system_error& e){
 
 通过try-catch 对error进行捕获,保证安全
 
+```cpp
+a.accept(sock);
+//sock->read_some
+//sock->write_some
+```
+
+**监听连接并接受，交由socket进行处理**
+
 
 
 ##### endpoint
@@ -164,9 +176,28 @@ std::unique_ptr<char[] > buf(new char[BUF_SIZE_BYTES]);
 auto input_buf = asio::buffer(static_cast<void*>(buf.get()), BUF_SIZE_BYTES);
 ```
 
+---
+
+##### uuid
+
+当使用容器管理智能指针的时候，常需要id来标识指针，控制其释放
+
+```c++
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+boost::uuids::uuid  a_uuid = boost::uuids::random_generator()();
+```
+
+
+
+
+
+---
+
 ### 同步读写
 
-##### 写
+##### 同步写
 
 `write_some`
 
@@ -191,14 +222,14 @@ std::string buf = "Hello World!";
 
 > 相对于write_some他们不需要知道缓冲区发了几次才将数据发送出去，只关注完整数据是否发送成功.
 >
-> 而write比send更加灵活，send只能用于socket的内容发送，write可以接受别的IO对象的fd
+> 而write比send更加灵活，send只能用于socket的内容发送，**是write_some的封装**，write可以接受别的IO对象的fd
 
 ```cpp
 sock.send(aiso::buffer("hello world!"));
 asio::write(sock,asio::buffer("hello world!"));
 ```
 
-##### 读
+##### 同步读
 
 `read_some`
 
@@ -226,7 +257,51 @@ cout << buf<<endl;
 
 
 
+:warning: mutable_buffer可以接受容器来初始化，但是值得注意的是，**必须对容器进行初始化，获得实际内存**，不能依赖容器的自动扩容特性。特别是读时，会容易忘记
+
+---
+
 ### 异步读写
+
+:warning:异步是不能通过return来返回成功发送、接受大小的，因为它不会阻塞线程，直接返回，所以设计其通过handler来传递成功大小。
+
+#### 异步写
+
+1. `async_write`
+
+2. `async_write_some`
+
+   > 异步写是无法保证发送的顺序的，在同步write_some常用的for来保证数据传输完成用于异步时，不加控制很可能产生hello hello world！ world！ 的错误，但我可能只是想发送一个hello world!原因是发送缓冲区现有free 空间<发送内容大小
+
+   解决：队列，保证应用层发送顺序https://gitbookcpp.llfc.club/sections/cpp/boost/asio09.html
+
+   ⭐⭐⭐重要思路：队列的先入先出特性保证读写的顺序
+
+   ```cpp
+   //原型
+   BOOST_ASIO_COMPLETION_TOKEN_FOR(void (boost::system::error_code,
+           std::size_t)) WriteToken
+             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE_PREFIX(WriteToken,
+         void (boost::system::error_code, std::size_t))
+     async_write_some(const ConstBufferSequence& buffers,
+         BOOST_ASIO_MOVE_ARG(WriteToken)token
+           BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+   ```
+
+   简单来说，就是需要两个参数：
+
+   一个是const ConstBufferSequence& buffers 
+
+   一个是函数指针token，在完成`async_write_some`或出现错误时，调用该函数`function<void(boost::system::error_code ec, std::size_t bytes_transferred)>`
+
+3. `async_send`
+
+   多次调用`async_write_some`的封装。注意一定不要和`async_write_some`混合使用会产生顺序错乱问题。
+
+**三者关系和同步写是一致的**
+
+---
 
 #### 异步读
 
@@ -241,5 +316,29 @@ cout << buf<<endl;
 3. **`async_receive`**：
    - `async_receive` 函数专门用于 **TCP 套接字**，它将异步读取数据到一个或多个缓冲区，直到遇到 EOF（文件结束标志）或遇到错误。
    - 它的行为类似于 `async_read`，但是它在读取到 EOF 时会返回，而 `async_read` 需要你手动处理 EOF 的情况。
+   - 内部实现，是`async_read_some`的多次调用，切忌和其混合使用
 
-注意：eof == end of file
+**注意：**eof == end of file
+
+**推荐**：使用`async_send`发送，`async_read_some`接收，因为写错误在本机分析比较容易，所以我只需要知道是否发送成功即可，而接受端需要考虑网络原因，使用`async_receive`不好对接受到的数据进行观测。
+
+---
+
+### 设计模型
+
+> 基于proactor模型设计
+
+- 读写时，会自动填充buffer
+
+
+
+
+
+**question：**为什么session需要有server的指针？
+
+为了让session本身，在发生错误时，调用server clearSession的方法释放内存。
+
+**question：**当读写handler都进入了，发生错误时是否存在double free的问题？
+
+不会，因为参数传递进来是值传递，当读写一端释放，另一端也会因为拷贝至少会保留计数1，保证本session的存活。
+
