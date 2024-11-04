@@ -142,6 +142,26 @@ a.accept(sock);
 
 
 
+---
+
+##### :thought_balloon: epoll联想
+
+> linux epoll 模型| windows iocp 模型
+
+boost的asio与epoll的关系。
+
+epoll实现的服务器常见操作有三步，**创建epoll实例epoll_create1、注册（监听连接、读、写）事件epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_sock, &event);、等待事件的发生epoll_wait**，然后再处理连接、读、写，处理业务。
+
+
+
+boost实现`proactor模型`异步io的操作（猜测)，是如下封装：`io_context`来替代`epoll` 实例来管理事件，`async_read` `async_write`是封装了  `epoll_ctl(epollfd,EPOLL_CTL_ADD,w_r_sock,&event)`的一系列注册操作后直接返回，然后`io_context.run()`进入`epoll_wait`的无限循环，事件就绪-wait返回后"交由os"（这里应该是模拟交由os处理，实际是自身通过send receive实现的）完成读写，后调用异步读写的回调函数。
+
+其他的异步操作应该也是如此思路。
+
+---
+
+
+
 ##### endpoint
 
 终端节点，简单来说就是，客户端用来**连接Connect**服务器，服务端用来**绑定Bind**监听
