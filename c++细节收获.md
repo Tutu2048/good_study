@@ -141,13 +141,13 @@ int copyfile2(char *dest, char *src) throw (float, string *, int)  { }
 
 ##### 标准库里的异常类
 
-![c2793b31742bd4fa1be241f59884e11e](E:\MarkDown\picture\c2793b31742bd4fa1be241f59884e11e.png)
+![c2793b31742bd4fa1be241f59884e11e](.\picture\c2793b31742bd4fa1be241f59884e11e.png)
 
 
 
 
 
-![e877b9e74bd4a4068121c67f808a3396](E:\MarkDown\picture\e877b9e74bd4a4068121c67f808a3396.png)
+![e877b9e74bd4a4068121c67f808a3396](.\picture\e877b9e74bd4a4068121c67f808a3396.png)
 
 ---
 

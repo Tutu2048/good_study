@@ -1,6 +1,6 @@
 # 微服务开源框架 TARS 的 RPC 源码解析 之 初识 TARS C++ 客户端
 
-![banner](E:\MarkDown\tars框架\picture\watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1RBUlNGb3VuZGF0aW9u,size_16,color_FFFFFF,t_70.jpeg)
+![banner](.\picture\watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1RBUlNGb3VuZGF0aW9u,size_16,color_FFFFFF,t_70.jpeg)
 
 作者：Cony 导语：微服务开源框架 TARS 的 RPC 调用包含客户端与服务端，《微服务开源框架 TARS 的 RPC 源码解析》系列文章将从初识客户端、客户端的同步及异步调用、初识服务端、服务端的工作流程四部分，以 C++ 语言为载体，深入浅出地带你了解 TARS RPC 调用的原理。
 
@@ -28,29 +28,29 @@ CommunicatorEpoll 类代表客户端的**网络模块**，内含 TC_Epoller 作�
 
 ObjectProxy 类是一个**服务实体**，注意与 ServantProxy 类是一个服务代理相区别，前者表示一个网络线程上的某个服务实体 A，后者表示对所有网络线程上的某服务实体 A 的总代理，更详细的介绍可见下文。ObjectProxy 通过 ObjectProxyFactory 生成，而 ObjectProxyFactory 类的实例是 CommunicatorEpoll 的成员变量，意味着一个网络线程 CommunicatorEpoll 能够产生各种各样的服务实体 ObjectProxy，发起不同的 RPC 服务。ObjectProxy 通过 AdapterProxy 来管理对服务端的连接。 好了，介绍完所有的类之后，先通过类图理一理他们之间的关系，这个类图在之后的文章中将会再次出现。
 
-![图（1-1）客户端类图](E:\MarkDown\tars框架\picture\up-ed4ee7ab0ac954aeb21ff13edaf5b8db11b.png)
+![图（1-1）客户端类图](.\picture\up-ed4ee7ab0ac954aeb21ff13edaf5b8db11b.png)
 
 TARS 的客户端最重要的类是 Communicator，一个客户端**只能声明出一个 Communicator 类实例**，用户可以通过 CommunicatorPtr& Application::getCommunicator () 获取线程安全的 Communicator 类单例。Communicator 类聚合了两个比较重要的类，一个是 CommunicatorEpoll，负责网络线程的建立与通过 ObjectProxyFactory 生成 ObjectProxy；另一个是 ServantProxyFactory，生成不同的 RPC 服务句柄，即 ServantProxy，用户通过 ServantProxy 调用 RPC 服务。 根据用户配置，Communicator 拥有 **n 个网络线程**，**即 n 个 CommunicatorEpoll**。每个 CommunicatorEpoll 拥有一个 ObjectProxyFactory 类，每个 ObjectProxyFactory 可以生成一系列的不同服务的实体对象 ObjectProxy，因此，假如 Communicator 拥有两个 CommunicatorEpoll，并有 foo 与 bar 这两类不同的服务实体对象，那么如下图（1-2）所示，每个 CommunicatorEpoll 可以通过 ObjectProxyFactory 创建两类 ObjectProxy，这是 TARS 客户端的第一层**负载均衡**，每个线程都可以分担所有服务的 RPC 请求，因此，一个服务的阻塞可能会影响其他服务，因为网络线程是多个服务实体 ObjectProxy 所共享的。
 
-![图（1-2）Communicator中的CommunicatorEpoll与ObjectProxy](E:\MarkDown\tars框架\picture\up-2ec6ba99f8ffe019386dc4e2c3f4e03c798.png)
+![图（1-2）Communicator中的CommunicatorEpoll与ObjectProxy](.\picture\up-2ec6ba99f8ffe019386dc4e2c3f4e03c798.png)
 
 Communicator 类下另一个比较重要的 ServantProxyFactory 类的作用是依据实际服务端的信息（如服务器的 socket 标志）与 Communicator 中客户端的信息（如网络线程数）而**生成 ServantProxy 句柄，通过句柄调用 RPC 服务**。举个例子，如下图（1-3）所示，Communicator 实例通过 ServantProxyFactory 成员变量的 getServantProxy () 接口在构造 fooServantProxy 句柄的时候，会获取 Communicator 实例下的所有 CommunicatorEpoll（即 CommunicatorEpoll-1 与 CommunicatorEpoll-2）中的 fooObjectProxy（即 fooObjectProxy-1 与 fooObjectProxy-2），并作为构造 fooServantProxy 的参数。Communicator 通过 ServantProxyFactory 能够获取 foo 与 bar 这两类 ServantProxy，ServantProxy 与相应的 ObjectProxy 存在相应的聚合关系：
 
-![图（1-3）Communicator中的ServantProxyFactory与ObjectProxy](E:\MarkDown\tars框架\picture\up-244f93ace1537515b83b824cbb84af637cf.png)
+![图（1-3）Communicator中的ServantProxyFactory与ObjectProxy](.\picture\up-244f93ace1537515b83b824cbb84af637cf.png)
 
 另外，每个 ObjectProxy 都拥有一个 EndpointManager，例如，fooObjectProxy 的 **EndpointManager 管理 fooObjectProxy 下面的所有 fooAdapterProxy**，每个 AdapterProxy 连接到一个提供相应 foo 服务的服务端物理机 socket 上。通过 EndpointManager 还可以以不同的负载均衡方式获取连接 AdapterProxy。假如 foo 服务有两台物理机，bar 服务有一台物理机，那么 ObjectProxy，EndpointManager 与 AdapterProxy 关系如下图（1-4）所示。上面提到，不同的网络线程 **CommunicatorEpoll 均可以发起同一 RPC 请求，对于同一 RPC 服务，选取不同的 ObjectProxy**（或可认为选取不同的网络线程 CommunicatorEpoll）是**第一层的负载均衡**，而对于同一个被选中的 **ObjectProxy，通过 EndpointManager 选择不同的 socket 连接 AdapterProxy**（假如 ObjectProxy 有大于 1 个的 AdapterProxy，如图（1-4）的 fooObjectProxy）是**第二层的负载均衡**。
 
-![图（1-4）ObjectProxy与AdapterProxy的关系](E:\MarkDown\tars框架\picture\up-71479b7e4a022ae1d3ed1533276bd65e2d2.png)
+![图（1-4）ObjectProxy与AdapterProxy的关系](.\picture\up-71479b7e4a022ae1d3ed1533276bd65e2d2.png)
 
 在客户端进行初始化时，必须建立上面介绍的关系，因此相应的类图如图（1-5）所示，通过类图可以看出各类的关系，以及初始化需要用到的函数。
 
-![图（1-5）客户端初始化后建立的类图](E:\MarkDown\tars框架\picture\up-3925cbef9b6c357db448a3c53b902c27dfc.png)
+![图（1-5）客户端初始化后建立的类图](.\picture\up-3925cbef9b6c357db448a3c53b902c27dfc.png)
 
 ## 初始化代码
 
 现在，通过代码跟踪来看看，在客户端初始化过程中，各个类是如何被初始化出来并建立上述的架构关系的。在简述之前，可以先看看函数的调用流程图，若看不清晰，可以将图片保存下来，用看图软件放大查看，强烈建议结合文章的代码解析以 TARS 源码一起查看，文章后面的所有代码流程图均如此。 接下来，将会按照函数调用流程图来一步一步分析客户端代理是如何被初始化出来的：
 
-![图（1-6） 初始化函数调用过程图](E:\MarkDown\tars框架\picture\up-d8b47ad48dbe5b1ab9c5fa36755e6f3e0f3.png)
+![图（1-6） 初始化函数调用过程图](.\picture\up-d8b47ad48dbe5b1ab9c5fa36755e6f3e0f3.png)
 
 ### 1. 执行 stringToProxy
 
@@ -112,7 +112,7 @@ void Communicator::initialize()
 
 在 CommunicatorEpoll 的构造函数中，ObjectProxyFactory 被创建出来，这是构造图（1-2）关系的前提。除此之外，还可以看到获取相应配置，创建并启动若干个异步回调后的处理线程。创建完成后，调用 CommunicatorEpoll::start () 启动网络线程。至此，Communicator::initialize () 顺利执行。通过下图回顾上面的过程：
 
-![图（1-7）执行Communicator的初始化函数流程](E:\MarkDown\tars框架\picture\up-b937cc166174ac404e7faa3908f86b1450b.png)
+![图（1-7）执行Communicator的初始化函数流程](.\picture\up-b937cc166174ac404e7faa3908f86b1450b.png)
 
 ### 3. 尝试获取 ServantProxy
 
@@ -141,7 +141,7 @@ for(size_t i = 0; i < _comm->getClientThreadNum(); ++i)
 
 代码来到 ObjectProxyFactory::getObjectProxy ()，同样，会首先加锁，再从 map<string,ObjectProxy*> _objectProxys 中查找是否已经拥有目标 ObjectProxy，若查找成功直接返回。若查找失败，需要新建一个新的 ObjectProxy，通过类图可知，ObjectProxy 需要一个 CommunicatorEpoll 对象进行初始化，由此关联管理自己的 CommunicatorEpoll，CommunicatorEpoll 之后便可以通过 getObjectProxy () 接口获取属于自己的 ObjectProxy。详细过程可见下图：
 
-![图（1-8）获取ObjectProxy流程](E:\MarkDown\tars框架\picture\up-a34f16584e5c81dd293118013ddfebef295.png)
+![图（1-8）获取ObjectProxy流程](.\picture\up-a34f16584e5c81dd293118013ddfebef295.png)
 
 注意：pObjectProxy->initialize放到getServantProxy里的tars_initialize统一初始化。ObjectProxy创建的过程，被包含在了createObjectProxy函数中，
 
@@ -155,7 +155,7 @@ _endpointManger.reset(new EndpointManager(this, _communicatorEpoll->getCommunica
 
 每个 ObjectProxy 都有属于自己的 EndpointManager 负责管理到服务端的所有 socket 连接 AdapterProxy，每个 AdapterProxy 连接到一个提供相应服务的服务端物理机 socket 上。通过 EndpointManager 还可以以不同的负载均衡方式获取与服务器的 socket 连接 AdapterProxy。 ObjectProxy:: ObjectProxy () 是图（1-6）或者图（1-8）中的略 1，具体的代码流程如图（1-9）所示。ObjectProxy 创建一个 EndpointManager 对象，在 EndpointManager 的初始化过程中，依据客户端提供的信息，直接创建连接到服务端物理机的 TCP/UDP 连接 AdapterProxy 或者从代理中获取服务端物理机 socket 列表后再创建 TCP/UDP 连接AdapterProxy。
 
-![图（1-9）ObjectProxy::ObjectProxy()函数流程图](E:\MarkDown\tars框架\picture\up-bcb4775a58488fe52590099b9d36681be90.png)
+![图（1-9）ObjectProxy::ObjectProxy()函数流程图](.\picture\up-bcb4775a58488fe52590099b9d36681be90.png)
 
 按照图（1-9）的程序流程执行完成后，便会建立如图（2-3）所示的一个 ObjectProxy 对多个 AdapterProxy 的关系。 新建 ObjectProxy 之后，就可以调用其 ObjectProxy::initialize () 函数进行 ObjectProxy 对象的初始化了，当然，需要将 ObjectProxy 对象插入 ObjectProxyFactory 的成员变量_objectProxys 与_vObjectProxys 中，方便下次直接返回 ObjectProxy 对象。
 
@@ -217,7 +217,7 @@ _comm.stringToProxy("MyDemo.StringServer.StringServantObj@tcp -h 192.168.106.130
 
 经过上文关于客户端初始化的分析介绍可知，可以得出如下图所示的关系图：
 
-![图（1-10）StringServant中ServantProxy，ObjectProxy与AdapterProxy的关系](E:\MarkDown\tars框架\picture\up-ae1404c6bd8bce139316ac39df071bfc212.png)
+![图（1-10）StringServant中ServantProxy，ObjectProxy与AdapterProxy的关系](.\picture\up-ae1404c6bd8bce139316ac39df071bfc212.png)
 
 获取 StringServantPrx _proxy 后，直接调用：
 
@@ -230,11 +230,11 @@ int retCode = _proxy->append(str1, str2, rStr);
 
 同样，我们先看看与同步调用相关的类图，如下图所示：
 
-![图（1-11） 客户端同步调用涉及的类图](E:\MarkDown\tars框架\picture\up-8bd79f22109b109513281ad9149d31918b7.png)
+![图（1-11） 客户端同步调用涉及的类图](.\picture\up-8bd79f22109b109513281ad9149d31918b7.png)
 
 StringServantProxy 是继承自 ServantProxy 的，StringServantProxy 提供了 RPC 同步调用的接口 Int32 append ()，当用户发起同步调用_proxy->append (str1, str2, rStr) 时，所进行的函数调用过程如下图所示。
 
-![图（1-12）同步调用过程](E:\MarkDown\tars框架\picture\up-295195bb9a5120e121b6b1f3df163f2ff17.png)
+![图（1-12）同步调用过程](.\picture\up-295195bb9a5120e121b6b1f3df163f2ff17.png)
 
 在函数 StringServantProxy::append () 中，程序会先构造 ServantProxy::tars_invoke () 所需要的参数，如请求包类型，RPC 方法名，方法参数等，需要值得注意的是，传递参数中有一个 **ResponsePacket 类型的变量，在同步调用中，最终的返回结果会放置在这个变量上**。接下来便直接调用了 ServantProxy::tars_invoke () 方法：
 
@@ -246,7 +246,7 @@ tars_invoke(tars::TARSNORMAL, "append", _os.getByteBuffer(), context, _mStatus, 
 
 无论同步调用还是各种异步调用，**ServantProxy::invoke () 都是 RPC 调用的必经之地**。在 ServantProxy::invoke () 中，继续填充传递进来的变量 ReqMessage msg。此外，还需要获取调用者 caller 线程的线程私有数据 ServantProxyThreadData，用来指导 RPC 调用。客户端的每个 caller 线程都有属于自己的维护调用上下文的线程私有数据，如 hash 属性，消息染色信息。最关键的还是每条 caller 线程与每条客户端网络线程 CommunicatorEpoll 进行信息交互的桥梁 —— 通**信队列 ReqInfoQueue 数组**，数组中的每个 ReqInfoQueue 元素负责与一条网络线程进行交互，如图（1-13）所示，图中橙色阴影代表数组 **ReqInfoQueue[]**，阴影内的圆柱体代表数组元素 **ReqInfoQueue**。假如客户端 create 两条线程（下称 caller 线程）发起 StringServant 服务的 RPC 请求，且客户端网络线程数设置为 2，那么两条 caller 线程各自有属于自己的线程私有数据**请求队列数组 ReqInfoQueue []**，数组里面的 ReqInfoQueue 元素便是该数组对应的 caller 线程与两条网络线程的通信桥梁，一条网络线程对应着数组里面的一个元素，通过网络线程 ID 进行数组索引。整个关系有点像生产者消费者模型，生产者 Caller 线程向自己的线程私有数据 **ReqInfoQueue []** 中的第 N 个元素 ReqInfoQueue [N] push 请求包，消费者客户端第 N 个网络线程就会从这个队列中 pop 请求包。·
 
-![图（1-13）caller线程与网络线程的通信](E:\MarkDown\tars框架\picture\up-889d7d1ffb847650ce16ed39ee35e7c88e1.png)
+![图（1-13）caller线程与网络线程的通信](.\picture\up-889d7d1ffb847650ce16ed39ee35e7c88e1.png)
 
 阅读代码可能会发现几个常量值，如 MAX_CLIENT_THREAD_NUM=64，这是最大网络线程数，在图（1-13）中为单个请求队列数组 ReqInfoQueue [] 的最大 size；MAX_CLIENT_NOTIFYEVENT_NUM=2048，在图（1-13）中，可以看作 caller 线程的最大数量，或者请求队列数组 ReqInfoQueue [] 的最大数量（反正两者一一对应，每个 caller 线程都有自己的线程私有数据 ReqInfoQueue []）。
 
@@ -374,7 +374,7 @@ msg = NULL;
 
 上面提到，当在 ServantProxy::invoke () 中，调用 CommunicatorEpoll::notify () 通知网络线程进行请求发送后，接下来，网络线程的具体执行流程如下图所示：
 
-![图（1-14）网络线程发送请求包](E:\MarkDown\tars框架\picture\up-9306224ce9c039a30985ebcdb464869548b.png)
+![图（1-14）网络线程发送请求包](.\picture\up-9306224ce9c039a30985ebcdb464869548b.png)
 
 由于 CommunicatorEpoll 继承自 TC_Thread，在上文 1.2.2 节中的第 2 小点的初始化 CommunicatorEpoll 之后便调用其 CommunicatorEpoll::start () 函数启动网络线程，网络线程在 CommunicatorEpoll::run () 中一直等待_ep.wait (iTimeout)。由于在上一节的描述中，在 CommunicatorEpoll::notify ()，caller 线程发起了通知 notify，网络线程在 CommunicatorEpoll::run () 就会调用 CommunicatorEpoll::handle () 处理通知：
 
@@ -503,7 +503,7 @@ for (int i = 0; i < num; ++i)
 
 接下来的程序流程如下图所示：
 
-![图（1-15）网络线程接收响应包](E:\MarkDown\tars框架\picture\up-37afb8a022e421c6550d19eb42b7e749908.png)
+![图（1-15）网络线程接收响应包](.\picture\up-37afb8a022e421c6550d19eb42b7e749908.png)
 
 在 CommunicatorEpoll::handle () 中，从 epoll_data::data 中获取 Transceiver 指针，并调用 CommunicatorEpoll::handleInputImp ()：
 
@@ -574,7 +574,7 @@ if(msg->eType == ReqMessage::SYNC_CALL)
 
 至此，对应同步调用的网络线程接收响应的工作就结束了，网络线程会回到 CommunicatorEpoll::run () 中，继续等待数据的收发。 综上，客户端同步调用的过程如下图所示。
 
-![图（1-16）同步调用图示](E:\MarkDown\tars框架\picture\up-87adf2eeb121620ed9081a69048ff8042bf.png)
+![图（1-16）同步调用图示](.\picture\up-87adf2eeb121620ed9081a69048ff8042bf.png)
 
 ## 异步调用
 
@@ -622,7 +622,7 @@ CommunicatorEpoll::CommunicatorEpoll(Communicator * pCommunicator,size_t netThre
 
 在开始讲述异步调用与接收响应之前，先看看大致的调用过程，与图（1-16）的同步调用来个对比。
 
-![图（1-17）客户端同步异步调用图示](E:\MarkDown\tars框架\picture\up-3a9411e3aada449a30524d3060c5b48b6bb.png)
+![图（1-17）客户端同步异步调用图示](.\picture\up-3a9411e3aada449a30524d3060c5b48b6bb.png)
 
 跟同步调用的示例一样，现在有一 MyDemo.StringServer.StringServantObj 的服务，提供一个 RPC 接口是 append，传入两个 string 类型的变量，返回两个 string 类型变量的拼接结果。在执行 tars2cpp 而生成的文件中，定义了回调函数基类 StringServantPrxCallback，用户需要 public 继承这个基类并实现自己的方法，例如：
 
@@ -640,7 +640,7 @@ public:
 
 然后，用户就可以通过 proxy->async_append (new asyncClientCallback (), str1, str2) 进行异步调用了，调用过程与上文的同步调用差不多，函数调用流程如下图所示，可以与图（1-12）进行比较，看看同步调用与异步调用的异同。
 
-![图（1-18）异步调用过程](E:\MarkDown\tars框架\picture\up-333d411aa93bef8f2b5a8060f67d27e87c7.png)
+![图（1-18）异步调用过程](.\picture\up-333d411aa93bef8f2b5a8060f67d27e87c7.png)
 
 在异步调用中，客户端发起异步调用_proxy->async_append (new asyncClientCallback (), str1, str2) 后，在函数 StringServantProxy::async_append () 中，程序同样会先构造 ServantProxy::tars_invoke_async () 所需要的参数，如请求包类型，RPC 方法名，方法参数等，与同步调用的一个区别是，还传递了承载**回调函数的派生类实例**。接下来便直接调用了 ServantProxy::tars_invoke_async () 方法：
 
@@ -676,9 +676,9 @@ pObjProxy->getCommunicatorEpoll()->notify(pSptd->_reqQNo, pReqQ);
 
 异步调用的请求发送过程与同步调用的一致，都是在网络线程中通过 ObjectProxy 去调用 AdapterProxy 来发送数据。但是在接收到响应之后，通过图（1-15）可以看到，在函数 AdapterProxy::finishInvoke (ReqMessage*) 中，同步调用会通过 msg->pMonitor->notify () 唤醒客户端的 caller 线程来接收响应包，而在异步调用中，则是如图（1-19）所示，CommunicatorEpoll 与 AsyncProcThread 的关系如图（1-20）所示。
 
-![图（1-19）异步回调的收包处理](E:\MarkDown\tars框架\picture\up-dde2d4dbfe948899ebc771d2e0660aca668.png)
+![图（1-19）异步回调的收包处理](.\picture\up-dde2d4dbfe948899ebc771d2e0660aca668.png)
 
-![图（1-20）CommunicatorEpoll与AsyncProcThread](E:\MarkDown\tars框架\picture\up-6ecf09bc767635c96035a415ae8498561fd.png)
+![图（1-20）CommunicatorEpoll与AsyncProcThread](.\picture\up-6ecf09bc767635c96035a415ae8498561fd.png)
 
 在函数 AdapterProxy::finishInvoke (ReqMessage*) 中，程序通过：
 

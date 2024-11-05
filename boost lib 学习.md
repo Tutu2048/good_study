@@ -45,7 +45,7 @@ socket.connect(server_endpoint, ec);
 
 3. io_context向操作系统发出应该启动异步连接的信号
 
-   ![在这里插入图片描述](E:\MarkDown\picture\watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxMTcyNjMx,size_16,color_FFFFFF,t_70.png)
+   ![在这里插入图片描述](.\picture\watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxMTcyNjMx,size_16,color_FFFFFF,t_70.png)
 
 4. 操作系统通过将结果放在一个队列上来指示连接操作已经完成，等待io上下文拾取。
    您的程序必须调用io context::run()(或一个类似的io context成员函数)，以便检索结果。当有未完成的异步操作时，对io context::run()的调用会**阻塞**，所以通常会在开始第一个异步操作时调用它。
@@ -180,7 +180,7 @@ boost实现`proactor模型`异步io的操作（猜测)，是如下封装：`io_c
 
  boost::asio提供了`asio::mutable_buffer` 和 `asio::sconst_buffer`这两个结构，他们是一段连续的空间，首字节存储了后续数据的长度。 `asio::mutable_buffer`用于写服务，`asio::const_buffer`用于读服务。
 
-![https://cdn.llfc.club/1676257797218.jpg](E:\MarkDown\picture\1676257797218-17286142150422.jpg)
+![https://cdn.llfc.club/1676257797218.jpg](.\picture\1676257797218-17286142150422.jpg)
 
 就使用而言，根据输入参数，返回读buffer --`asio::const_buffers_1`，和写buffer--`mutable_buffers_1`
 

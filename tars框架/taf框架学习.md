@@ -345,7 +345,7 @@ HelloPrx pPrx = _comm->stringToProxy<HelloPrx>(helloObj);
 
 https://cloud.tencent.com/developer/article/1663146
 
-![img](E:\MarkDown\tars框架\picture\j31bwsrn1o.png)
+![img](.\picture\j31bwsrn1o.png)
 
 
 
