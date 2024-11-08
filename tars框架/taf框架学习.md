@@ -30,7 +30,7 @@ Servant：服务者，提供具体服务的接口或实例。例如:HelloImp；
 
 
 
-![image-20240809163334199](D:\UserData\18122252978\AppData\Roaming\Typora\typora-user-images\image-20240809163334199.png)
+![image-20240809163334199](.\picture\image-20240809163334199.png)
 
 - tarsRegistryServer -- 类似于DNS，管理名字
 - NotifyServer  -- 展示在web，也可以发短信
@@ -41,13 +41,13 @@ Servant：服务者，提供具体服务的接口或实例。例如:HelloImp；
 
 
 
-![image-20240809165401537](D:\UserData\18122252978\AppData\Roaming\Typora\typora-user-images\image-20240809165401537.png)
+![image-20240809165401537](.\picture\image-20240809165401537.png)
 
 
 
 
 
-![image-20240809170123627](D:\UserData\18122252978\AppData\Roaming\Typora\typora-user-images\image-20240809170123627.png)
+![image-20240809170123627](.\picture\image-20240809170123627.png)
 
 
 

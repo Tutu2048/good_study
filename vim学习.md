@@ -60,3 +60,5 @@ vim `：command`
 
 
 
+- `zo`：打开被折叠的代码。“z”象形or zone open
+- `zc`：关闭被折叠的代码。close
