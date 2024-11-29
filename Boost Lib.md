@@ -54,6 +54,25 @@ socket.connect(server_endpoint, ec);
 
 
 
+##### **io_context::work**
+
+`io_context::work` 是 Boost.Asio 库中的一个类，它的主要作用是告知 `io_context` 对象何时开始和结束工作。这个类确保了 `io_context` 对象的 `run()` 方法不会在有未完成的工作时退出，并且当没有剩余的未完成工作时会退出。`io_context::work` 类是可复制构造的，因此它可以用作处理器类的数据成员。
+
+简单来说作用就是让程序员不需要担心io_context会直接退出，继续等待任务的注册。
+
+```cpp
+io_context::work w(ioc);
+w.reset();
+```
+
+在构造时注册，reset主动析构。
+
+
+
+---
+
+
+
 ##### socket
 
 ```cpp
@@ -209,9 +228,25 @@ auto input_buf = asio::buffer(static_cast<void*>(buf.get()), BUF_SIZE_BYTES);
 boost::uuids::uuid  a_uuid = boost::uuids::random_generator()();
 ```
 
+---
 
+##### signal
 
+信号处理，捕获再处理，多用于程序的关闭。
 
+**signal_set**信号集
+
+```cpp
+ boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
+        signals.async_wait([&io_context](auto, auto) {
+            io_context.stop();
+            });
+//注册几个，回调函数入参填几个
+```
+
+这边是不是可以做区别操作？
+
+拓展：C风格的信号处理退出，常在**主线程创建子线程用于业务启动**，主线程join等待子线程关闭，完成一系列结束操作并资源释放，优雅退出。
 
 ---
 
