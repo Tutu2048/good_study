@@ -151,15 +151,17 @@ catch(system::system_error& e){
 }
 ```
 
-通过try-catch 对error进行捕获,保证安全
+并通过try-catch 对error进行捕获,保证安全
+
+
+
+**监听连接并接受，交由socket进行处理**
 
 ```cpp
 a.accept(sock);
 //sock->read_some
 //sock->write_some
 ```
-
-**监听连接并接受，交由socket进行处理**
 
 
 
@@ -250,6 +252,56 @@ string _uuid = boost::uuids::to_string(a_uuid);
 这边是不是可以做区别操作？
 
 拓展：C风格的信号处理退出，常在**主线程创建子线程用于业务启动**，主线程join等待子线程关闭，完成一系列结束操作并资源释放，优雅退出。
+
+---
+
+##### strand
+
+> 用于在多线程环境中保持一组任务的有序性。即使任务在不同的线程上执行，`strand`也能保证它们按照发起任务时的顺序执行。这避免了在任务中放置大量的同步代码，使得代码更易于编写并且在获得性能提升的同时更加方便
+
+常用方法：
+
+1. post
+
+   ```cpp
+   strand.post(some_function);
+   strand.post(boost::bind(&some_class::some_method, &some_object, arg1, arg2));
+   ```
+
+2. wrap
+
+   ```cpp
+   auto wrapped_handler = strand.wrap(boost::bind(&some_class::some_method, &some_object, arg1, arg2));
+   // 使用wrapped_handler作为某个异步操作的完成handler
+   ```
+
+3. bind_executor
+
+   ```cpp
+   my_socket.async_read_some(my_buffer,
+       boost::asio::bind_executor(my_strand,
+           [](error_code ec, size_t length)
+           {
+               // 处理异步读取结果
+           }));
+   ```
+
+三种方式的应用场景
+
+1. **`strand::post`**：
+   - `strand::post`是直接将一个任务提交到`io_service`，由`strand`保证这些任务不会并发执行，并且按照它们被提交的顺序执行。
+   - 使用`strand::post`时，任务会被排队，然后在`io_service`的某个线程中执行。
+2. **`strand::wrap`**：
+   - `strand::wrap`用于创建一个新的handler，这个handler被`strand`包装过，确保当这个handler被调用时，它将在`strand`所关联的`io_service`上顺序执行。
+   - `strand::wrap`通常用于异步操作的完成处理程序，以确保回调函数按照顺序执行。
+3. **`boost::asio::bind_executor`**：
+   - `boost::asio::bind_executor`用于将一个执行器（如`strand`）绑定到一个handler上，当这个handler被调用时，它会在指定的执行器上执行。
+   - 与`strand::wrap`相比，`bind_executor`提供了更灵活的绑定方式，允许将任何执行器绑定到handler上，而不仅仅是`strand`。
+   - `bind_executor`通常用于需要将异步操作的完成处理程序绑定到特定执行器的场景，以确保处理程序在正确的上下文中执行。
+
+总结来说，`strand::post`和`strand::wrap`主要用于`strand`对象，以确保任务或回调函数的顺序执行和线程安全。而`boost::asio::bind_executor`提供了一种更通用的方法，允许将任何执行器绑定到handler上，以确保异步操作的完成处理程序在正确的执行器上执行
+
+
 
 ---
 

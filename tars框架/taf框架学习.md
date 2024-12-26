@@ -335,6 +335,8 @@ HelloPrx pPrx = _comm->stringToProxy<HelloPrx>(helloObj);
 
 ## JMem 学习
 
+//TODO
+
 
 
 
@@ -424,3 +426,8 @@ TC_NetWorkBuffer::PACKET_TYPE parseHttp(TC_NetWorkBuffer &in, vector<char> &out)
 - 减少服务器压力，和获取更加相近的服务器，减少网络延迟
 - ...
 
+
+
+**tars各功能介绍**
+
+https://cloud.tencent.com/developer/article/1598863
