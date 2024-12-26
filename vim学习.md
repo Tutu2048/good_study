@@ -62,3 +62,12 @@ vim `：command`
 
 - `zo`：打开被折叠的代码。“z”象形or zone open
 - `zc`：关闭被折叠的代码。close
+
+
+
+将`conf`文件视为`xml`文件，享受一样的高亮与设置，打开`.vimrc`
+
+```
+autocmd BufRead,BufNewFile *.conf set filetype=xml
+```
+
