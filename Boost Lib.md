@@ -65,7 +65,7 @@ io_context::work w(ioc);
 w.reset();
 ```
 
-在构造时注册，reset主动析构。
+在构造时注册，`reset`已经被抛弃了，它实际是将work重启，建议通过析构将work取消
 
 
 
@@ -94,6 +94,8 @@ if (ec.value() != 0) {
 ```
 
 注意：在新版boost库中，asio::ip:tcp::socket无需手动open，在创建后会自动打开。
+
+**socket无法拷贝**
 
 
 
@@ -228,6 +230,7 @@ auto input_buf = asio::buffer(static_cast<void*>(buf.get()), BUF_SIZE_BYTES);
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 boost::uuids::uuid  a_uuid = boost::uuids::random_generator()();
+string _uuid = boost::uuids::to_string(a_uuid);
 ```
 
 ---
