@@ -431,3 +431,16 @@ TC_NetWorkBuffer::PACKET_TYPE parseHttp(TC_NetWorkBuffer &in, vector<char> &out)
 **tars各功能介绍**
 
 https://cloud.tencent.com/developer/article/1598863
+
+
+
+---
+
+##### 协程
+
+协程开关
+
+```xml
+opencoroutine=1
+```
+
