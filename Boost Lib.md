@@ -1,5 +1,11 @@
 # Boost 库
 
+> https://www.boost.org/ 官方网站 
+>
+> Documents里有很多案例
+
+## ASIO
+
 ### 常用类
 
 ##### io_context
@@ -369,6 +375,8 @@ cout << buf<<endl;
 
 :warning: mutable_buffer可以接受容器来初始化，但是值得注意的是，**必须对容器进行初始化，获得实际内存**，不能依赖容器的自动扩容特性。特别是读时，会容易忘记
 
+Ex: `boost::asio::transfer_at_least（uint n）` 至少n个字节 ，可以配合read-wirte使用 
+
 ---
 
 ### 异步读写
@@ -434,6 +442,41 @@ cout << buf<<endl;
 
 ---
 
+### 协程
+
+> coroutine 应用级别的进程。其**设计初衷**是想要兼备**异步编程的程序执行效率**，和**同步编程的可读性、易用性**，是在异步的基础上降低编程成本。
+>
+> 最终效果：代码使用异步函数，却无需回调，增加协程的关键字，实现**类同步编程**的效果
+>
+> 注意:协程是无法使用cpu的多核优势的
+
+##### 
+
+##### 关键字 
+
+- **awaitable**<return type> function(){};  声明函数为可等待的函数
+- **co_await** aync_function(...,**use_awaitable**);  以协程方式执行异步函数
+  - co_await 接受返回值
+  - use_awaitable 传递回调
+
+- **co_spawn**(executor, function,option) 生成一个协程执行function；option里有**detached**
+
+:warning: 注意：
+
+- **`executor`** 是一个比io_context更抽象的概念，用于表示任务的执行环境和任务调度策略。
+- 它是 `io_context` 的一部分，但 `io_context` 是一种具体的 `executor`。
+
+⛈️ 猜测：协程是将回调函数封装进了use_awaitable模版函数内
+
+```c++
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
+```
+
+
+
+---
+
 ### 逻辑层
 
 1. 模板单例类
@@ -486,3 +529,22 @@ jsoncpp 库的特点包括：
 2. 易于使用：提供简单的 API，易于理解和使用；
 3. 可靠性高：经过广泛测试，已被许多企业和开发者用于生产环境中；
 4. 开源免费：遵循 MIT 许可证发布，使用和修改均免费。
+
+
+
+## Beast
+
+> Portable HTTP, WebSocket, and network operations using only C++11 and Boost.Asio
+
+### 常用类
+
+
+
+##### request
+
+##### response
+
+##### flat_buffer
+
+##### ostream
+
