@@ -24,7 +24,7 @@ description: >- # this means to ignore newlines until "baseurl:"
   Write an awesome description for your new site here. You can edit this
   line in _config.yml. It will appear in your document head meta (for
   Google search results) and in your feed.xml site description.
-baseurl: "" # the subpath of your site, e.g. /blog
+baseurl: "/good_study" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: none
 github_username:  Tutu2048
@@ -33,6 +33,20 @@ github_username:  Tutu2048
 theme: minima
 plugins:
   - jekyll-feed
+  - jekyll-toc
+
+# jekyll-toc 配置
+toc:
+  labels: "目录"  # 目录标题
+  min_level: 2    # 最小标题级别（H2）
+  max_level: 6    # 最大标题级别（H6）
+  lists: true     # 是否显示列表
+  back_to_top: true  # 是否显示“返回顶部”链接
+
+# Minima 主题配置
+minima:
+  auto_toc_label: "目录"  # 自动目录标题
+  toc_levels: "2-6"      # 自动目录的标题级别范围
 
 # Exclude from processing.
 # The following items will not be processed, by default.
