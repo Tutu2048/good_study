@@ -1,34 +1,10 @@
-# Linux学习
+# Linux&Windows
 
-##### 把程序交由到**systemd**管理
+## Linux
 
-```shell
-$ cd /etc/systemd/system/xx.service	#link to /usr/lib/systemd/system/xx.service
-$ cd /usr/lib/systemd/system/xx.service #real service
-#添加、修改该两个文件即可被systemd找到
-$systemctl daemon-reload	#修改完重新加载一下文件
-$systemctl status/start/enable/stop/restart xx  #默认省略service；enable开启自启动
-```
+#### Shell命令
 
----
-
-##### Shell命令：**sed** 常规用法
-
-```shell
-#Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
-#option -i 直接编辑文件本身，不加-i编辑输出文本
-$sed [-i] 's/old/new/' file.txt#substitute
-$sed [-i] '3s/old/new/' file.txt
-$sed [-i] 'i\new line' file.txt#insert
-$sed [-i] '3a\new line' file.txt#append
-$sed [-i] '$a\new line' file.txt
-$sed  -n '3p' file.txt
-$sed -n '1,5p' file.txt
-```
-
----
-
-##### **objdump**	 
+##### objdump	 
 
 Display information from object <file(s)>.
 
@@ -132,6 +108,42 @@ $pkg-config --cflags --libs glib-2.0 >= 2.40
 ##### pgrep
 
 `pgrep <program name>`根据程序名查找进程id
+
+---
+
+##### **sed** 
+
+```shell
+#Usage: sed [OPTION]... {script-only-if-no-other-script} [input-file]...
+#option -i 直接编辑文件本身，不加-i编辑输出文本
+$sed [-i] 's/old/new/' file.txt#substitute
+$sed [-i] '3s/old/new/' file.txt
+$sed [-i] 'i\new line' file.txt#insert
+$sed [-i] '3a\new line' file.txt#append
+$sed [-i] '$a\new line' file.txt
+$sed  -n '3p' file.txt
+$sed -n '1,5p' file.txt
+```
+
+##### 管道｜
+
+- **xargs**
+
+  cmd1 | xargs cmd2    xargs(extended arguments) 可以将标准输入里面的每一行转换成命令的参数     xargs往往和管道一起使用，
+
+  ```shell
+  find . -name "*.c" | xargs grep -nE "\<main\("
+  ```
+
+##### grep
+
+- `-n`：在输出中显示匹配行的行号。
+
+- `-E`：将模式解释为扩展正则表达式（这允许使用更复杂的正则表达式语法）。
+
+  
+
+
 
 ---
 
@@ -250,3 +262,43 @@ Usage: chown [OPTION]... [ OWNER] [:[GROUP]] FILE...
 ##### 重定向
 
 重定向输出到文件时，通常使用`>`和`>>`这两个操作符。`>`用于将输出重定向到文件中，如果文件已存在，则会覆盖原有内容；**`>>`用于将输出追加到文件末尾**，如果文件已存在，不会覆盖原有内容，而是添加到文件内容的后面。
+
+---
+
+#### Linux app管理
+
+##### 把程序交由到**systemd**管理
+
+```shell
+$ cd /etc/systemd/system/xx.service	#link to /usr/lib/systemd/system/xx.service
+$ cd /usr/lib/systemd/system/xx.service #real service
+#添加、修改该两个文件即可被systemd找到
+$systemctl daemon-reload	#修改完重新加载一下文件
+$systemctl status/start/enable/stop/restart xx  #默认省略service；enable开启自启动
+```
+
+---
+
+​										<!--Chapters End-->
+
+---
+
+## Windows
+
+
+
+##### Q：为什么编译DLL时总会同时生成一个LIB？
+
+**A：**在Windows平台上，编译动态链接库（DLL）时生成的 `.lib` 文件被称为 **导入库**（import library）。它的作用是帮助链接器在编译和链接其他使用该DLL的程序时，找到DLL中导出的函数和变量。
+
+- **导入库（`.lib` 文件）** 是在**编译和链接时**使用的，它包含DLL中导出函数和变量的符号信息和占位符。
+- 是特殊的静态文件，仅用于程序员编译、调试时使用
+
+
+
+
+
+
+
+
+

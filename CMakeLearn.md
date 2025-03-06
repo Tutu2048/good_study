@@ -282,6 +282,17 @@ include(CMakePrintHelpers)
 cmake_print_variables(_status _hello_world)
 ```
 
+
+
+**find_package + target_link_libraries**是更加**现代且优秀**的管理路径和链接的方式。
+
+- 用包管理工具安装库，且库支持现代cmake
+- link时不知道第二个参数填什么可以：
+  1. 官网看
+  2. *Config.cmake里面找add_library 第一个就是需要填的Target ，当然在后续的子cmake模块里面可能会对其取别名。
+
+
+
 ---
 
 ## 四、创建和运行测试
