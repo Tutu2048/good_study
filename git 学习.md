@@ -82,3 +82,21 @@ git push --force origin <branch-name>
 ```
 
 更推荐--force-with-lease
+
+
+
+##### ssh&http
+
+使用github时，
+
+- 用户-setting-developer setting-tokens 是pc通过http协议操作所有仓库的权利
+- 仓库-settings-Deploy keys 设置 是pc通过ssh协议操作该仓库的权利
+
+**仓库获取内容遵循的协议**
+
+- 查看：**git remote -v**
+- 添加：**git remote add origin** [ http://]git@github.com:user/repos.git]
+- 修改：**git remote set-url origin** [ http://]git@github.com:user/repos.git]
+
+
+
