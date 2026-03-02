@@ -64,7 +64,16 @@ tips：
 
    所以引入{}用做构造对象的方式来避免歧义
 
+---
 
+##### :warning:引用&
+
+| **引用类型**        | **语法**     | **绑定对象**  | **主要用途**               |
+| :------------------ | :----------- | :------------ | :------------------------- |
+| 左值引用            | `T&`         | 左值          | 别名访问、**避免拷贝**     |
+| 常量左值引用        | `const T&`   | **左值/右值** | 安全访问、接受**临时对象** |
+| 右值引用 (C++11)    | `T&&`        | **右值**      | 移动语义、完美转发         |
+| 转发引用 (万能引用) | `T&&` (模板) | 左值/右值     | 完美转发foward             |
 
 ---
 
@@ -170,7 +179,7 @@ public、protected、private
 
 ---
 
-##### Lambda表达
+##### Lambda表达式
 
 捕获列表用于指定从周围作用域中捕获哪些变量。语法如下：
 
@@ -180,6 +189,8 @@ public、protected、private
 - `[this]`：捕获当前对象的`this`指针。
 
 Tips：在**异步**传递lambda表达作为函数token的时候，它的流程是将函数**交由调度器去感知触发和执行**，不仅仅需要注意参数，也需要注意**捕获变量的生命周期**。因为它**并不是顺序执行的**！其中变量很可能出现变化导致程序错误。
+
+原理：Lambda表达式本质上是**编译器自动生成的匿名类对象**，这个类重载了`operator()`，使其可以像函数一样被调用，也就是**匿名仿函数**，所谓的捕获列表其实就是类的初始化列表
 
 ---
 
@@ -214,9 +225,47 @@ int a()const;
 
 ---
 
-##### return
+##### 隐式转换
 
-- 我们都知道在return时，会发生拷贝，那如果返回的是一个类，会发生拷贝构造，为了避免拷贝构造，常常使用引用&符号来进行返回。这里有一个小点，如果返回值为类A，而A并没有拷贝构造，则会**使用A的移动构造**
+自定义隐式转换：`operator [className](){...}` , 成员函数；将自己类实例转换成className类实例
+
+```cpp
+####1#####
+class B{
+public:
+    void print(){cout << "hello world"<<endl;}
+};
+class A{
+public:
+    operator B(){ return B();}
+};
+A a;
+B b = a; #触发隐式转换
+b.print();
+
+#####2####
+class Celsius {
+public:
+    Celsius(double t) : temp(t) {}
+
+    // 隐式转换为华氏度
+    operator double() const {
+        return temp * 9/5.0 + 32;
+    }
+
+private:
+    double temp;
+};
+Celsius c(100);     // 100°C
+double f = c;       // 自动转换 -> 212°F
+cout << f;          // 输出212
+```
+
+---
+
+##### 返回值优化 (RVO)
+
+-  我们都知道在return时，会发生拷贝，那如果返回的是一个类，会发生拷贝构造，为了避免拷贝构造，常常使用引用&符号来进行返回。这里有一个小点，如果返回值为类A，而A并没有拷贝构造，则会**使用A的移动构造**
 
 - return时必然发生拷贝，我们要避免拷贝的开销，要合理使用引用和智能指针去管理内存。也可以减少内存导致的异常发生的几率。
 
@@ -235,7 +284,7 @@ int a()const;
 
   两种方式，都可以减少一次vector的拷贝，并将内存拷贝的风险有效控制在函数内部，而不是末尾。且能够在拷贝失败时，依旧保存data栈中的数据，以便后续异常处理，不会因此丢失数据
   
-  :warning: 不要返回局部变量的指针和引用；​在函数结束时会回收局部变量，指针和引用指向的空间已经回收，会后续操作，极有可能造成程序的崩溃。
+  :warning: **不要返回局部变量的指针和引用**；​在函数结束时会回收局部变量，指针和引用指向的空间已经回收，会后续操作，极有可能造成程序的崩溃。
 
 ---
 
@@ -703,6 +752,17 @@ A：是为了启用**移动语义**，所以命名为move
 
 当一个变量在该类or域 内不再需要，想要减少拷贝的情况，使用std::move
 
+使用技巧：
+
+```cpp
+//常规清空队列某个空间,使用特殊数字进行填充控制
+mylist[i]=0;
+//move方式。用局部临时变量承接内容，在生命周期结束后析构
+auto x = mylist[i];
+```
+
+但是这种方式，在多线程、含原子操作的情况下要谨慎使用，多个线程同时去move一个空间，会导致问题的出现
+
 ---
 
 ##### function对象
@@ -713,13 +773,39 @@ A：是为了启用**移动语义**，所以命名为move
 
 target函数可以用来获取指向函数指针的裸指针 ，在c++程序兼容c语言库时，可能需要用到
 
+---
 
+##### Ref
+
+> 显示引用，和&方式不同，是将地址变量地址封装成一个类。可以解决多重调用时底层的**decay_t去引用**导致的引用实效，用法和正常传递参数一样
+
+```cpp
+int x=0;
+//void(int &)
+func(ref(x));
+```
 
 ---
 
 ---
 
 ### 泛式编程
+
+##### 模版特化
+
+可以简单理解成，模版的重载，在泛式模版无法满足某些类型时进行的特殊性操作
+
+```cpp
+template<class T>
+void print(T out){cout <<"泛式模版print"<<out<<endl;};
+
+template<>
+void print<const char*>(const char* out){cout <<"char* 特化print"<<out<<endl;}
+```
+
+
+
+---
 
 ##### typename
 
@@ -731,11 +817,64 @@ proxy = (typename T::element_type*)(pServantProxy);
 
 ---
 
-##### 完美类型转换
+##### 可变参数模板 (Variadic Templates)
+
+```cpp
+template <class F, class... Args>
+```
+
+- 作用：接受任意数量和类型的参数
+- **Args...**：模板参数包，表示0个或多个类型
+- **args...**：函数参数包，表示0个或多个参数
+
+---
+
+##### 完美转发 (Perfect Forwarding)
 
 ```
-std::promise` 和 `std::future
+std::forward<F>(f), std::forward<Args>(args)...
 ```
+
+- **`std::forward`**：保持参数的值类别（左值/右值）
+
+- **转发引用**：`F&&` 和 `Args&&...` 是万能引用
+
+- **作用**：避免不必要的拷贝，保持移动语义
+
+- **原理**：
+
+  ```cpp
+  template <typename T>
+  void wrapper(T&& arg) {
+      // 当传入左值时，T 推导为 Type&
+      // 当传入右值时，T 推导为 Type
+      callee(std::forward<T>(arg));
+  }
+  ```
+
+---
+
+##### 尾置返回类型
+
+✅:
+
+```c++
+template <class F, class... Args>
+auto commit(F&& f, Args&&... args) -> std::future<decltype(f(args...))> { ... }
+```
+
+这是 C++11 引入的语法。编译器在看到 `auto` 时知道返回类型在后面。
+
+当编译器解析到 `->` 后面的 `decltype(f(args...))` 时，它已经读过了参数列表 `(F&& f, Args&&... args)`。此时，**标识符 `f` 和 `args` 已经在当前作用域内定义了**。
+
+❌:
+
+```c++
+template <class F, class... Args>
+std::future<decltype(f(args...))> commit(F&& f, Args&&... args) { ... }
+```
+
+常见定义,但是编译器是**从左往右**解析的。当它尝试解析 `std::future<decltype(f(args...))>` 时，它还没有读到后面的参数列表。此时，**编译器根本不知道 `f` 和 `args` 是什么**。
 
 ---
 
@@ -751,7 +890,17 @@ std::promise` 和 `std::future
 
 
 
-但是单例类大多为程序伊始即需要初始化，
+但是单例类大多为程序伊始即需要初始化
+
+---
+
+##### decltype
+
+> 返回类型推断
+
+```c++
+using RetType = decltype(f(args...)); 
+```
 
 ---
 
@@ -772,3 +921,10 @@ m_bIsLimitUpCalc.store((bCalc,std::memory_order_relaxed));
 注意这里atomic变量使用了store函数，用于修改自身的值，但这里使用了两个括号，`(bCalc,std::memory_order_relaxed)`返回了一个std::memory_order_relaxed的值，而其值为0，导致使用store时m_bIsLimitUpCalc永远为fasle.
 
 知道逗号运算符的作用后，需要警惕的是，括号运算符的优先级很高，在传参时需要小心！
+
+---
+
+##### 
+
+
+

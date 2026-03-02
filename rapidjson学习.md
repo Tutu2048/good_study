@@ -34,3 +34,18 @@ a.PushBack(Value().SetInt(42), allocator); // fluent API
 a.PushBack(Value(42).Move(), allocator);   // 和上一行相同
 ```
 
+
+
+### JSON Schema
+
+##### **什么时候用 JSON Schema？**
+
+1. **API 开发**：验证请求/响应数据格式。
+2. **表单系统**：动态生成前端表单并校验输入。
+3. **数据管道**：确保数据清洗后的结构一致性。
+4. **配置文件**：验证配置文件的合法性。
+
+##### 区别
+
+- **JSON** 是数据本身，关注「**是什么**」。
+- **JSON Schema** 是数据规则，关注「**应该是什么**」。
